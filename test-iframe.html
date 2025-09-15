@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test MyCarl Iframe</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ccc; }
+        .status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>MyCarl Iframe Test</h1>
+    <div class="status" id="status">Loading...</div>
+    
+    <iframe 
+        id="testFrame"
+        src="http://localhost:3000/mycarl/client/8565/dashboard"
+        onload="onFrameLoad()"
+        onerror="onFrameError()"
+    ></iframe>
+
+    <script>
+        function onFrameLoad() {
+            document.getElementById('status').innerHTML = '✅ Iframe loaded successfully!';
+            console.log('Iframe loaded');
+        }
+        
+        function onFrameError() {
+            document.getElementById('status').innerHTML = '❌ Iframe failed to load';
+            console.log('Iframe error');
+        }
+        
+        // Test direct URL access
+        fetch('http://localhost:3000/mycarl/client/8565/dashboard', { method: 'HEAD' })
+            .then(response => {
+                console.log('Direct URL test:', response.status, response.statusText);
+            })
+            .catch(error => {
+                console.error('Direct URL test failed:', error);
+            });
+    </script>
+</body>
+</html>

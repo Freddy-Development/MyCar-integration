@@ -1,0 +1,916 @@
+<template>
+  <div class="app-container">
+    <div class="browser-bar">
+      <div class="browser-controls">
+        <button class="control-btn" @click="goBack" :disabled="!canGoBack" title="Back">←</button>
+        <button class="control-btn" @click="goForward" :disabled="!canGoForward" title="Forward">→</button>
+        <button class="control-btn" @click="reloadPage" title="Reload">↻</button>
+      </div>
+      <div class="address-bar">
+        <input 
+          v-model="currentUrl" 
+          @keyup.enter="navigateTo"
+          class="url-input"
+          placeholder="Enter URL..."
+        />
+        <div class="connection-status" :class="connectionStatus">
+          <span v-if="connectionStatus === 'connecting'">🔄</span>
+          <span v-else-if="connectionStatus === 'connected'">✅</span>
+          <span v-else-if="connectionStatus === 'error'">❌</span>
+        </div>
+        <button class="go-btn" @click="navigateTo">Go</button>
+      </div>
+    </div>
+    
+    <div class="browser-content">
+      <div v-if="showLauncher" class="launcher-screen">
+        <div class="launcher-card">
+          <div class="launcher-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V8H19V19ZM7 10V12H9V10H7ZM11 10V12H13V10H11ZM15 10V12H17V10H15ZM7 14V16H9V14H7ZM11 14V16H13V14H11ZM15 14V16H17V14H15Z" fill="#007bff"/>
+            </svg>
+          </div>
+          <h2>MyCarl Accounting Software</h2>
+          <p>Due to security restrictions, MyCarl cannot be embedded directly in an iframe.</p>
+          <p>Click the button below to open MyCarl in a new tab where it will work normally.</p>
+          
+          <div class="launcher-buttons">
+            <button class="launch-btn primary" @click="launchMyCarl">
+              🚀 Launch MyCarl
+            </button>
+            <button class="launch-btn secondary" @click="tryEmbedded">
+              🔧 Try Embedded (Limited)
+            </button>
+          </div>
+          
+          <div class="launcher-info">
+            <h3>Why can't it be embedded?</h3>
+            <ul>
+              <li>MyCarl uses X-Frame-Options headers to prevent embedding</li>
+              <li>CORS policies block cross-origin iframe access</li>
+              <li>OAuth authentication requires same-origin requests</li>
+              <li>These are security measures to protect user data</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Main content area with iframe and side menu -->
+      <div class="main-layout" v-else ref="mainLayout">
+        <div class="iframe-container" :class="{ 'no-transition': isResizing }" :style="iframeStyle" :data-width="iframeWidth">
+          <div v-if="connectionStatus === 'connecting'" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>Loading MyCarl...</p>
+          </div>
+          <iframe
+            ref="mycarlIframe"
+            :src="currentUrl"
+            class="mycarl-iframe"
+            title="MyCarl Accounting Software"
+            frameborder="0"
+            allowfullscreen
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-top-navigation-by-user-activation allow-downloads allow-modals"
+            allow="camera; microphone; geolocation; payment; encrypted-media; autoplay; fullscreen; picture-in-picture; web-share"
+            @load="onIframeLoad"
+            @error="onIframeError"
+          ></iframe>
+        </div>
+
+        <!-- Draggable resize handle -->
+        <div 
+          class="resize-handle"
+          @pointerdown="startResize"
+        >
+          <div class="separator"></div>
+        </div>
+
+        <!-- Side menu placeholder -->
+        <div class="side-menu" :class="{ 'no-transition': isResizing }" :style="sideMenuStyle" :data-width="sideMenuWidth">
+          <div class="side-menu-fill">
+                   <!-- Freddy Chat Interface embedded -->
+                   <freddy-chat-interface
+                     class="freddy-chat-embed"
+                     placeholder="Start a new conversation..."
+                     size="md"
+                     theme="light"
+                     api-base-url="/freddy-api"
+                     organization-id="52"
+                     :file-search="false"
+                     :web-search="false"
+                     :debug-mode="false"
+                   ></freddy-chat-interface>
+          </div>
+        </div>
+
+        <!-- Fullscreen overlay during resize to guarantee pointerup -->
+        <div
+          v-if="isResizing"
+          class="resize-overlay"
+          @pointerup="stopResize"
+          @mouseup="stopResize"
+        ></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'App',
+  data() {
+    return {
+             currentUrl: '/mycarl/client/8565/dashboard',
+      canGoBack: false,
+      canGoForward: false,
+      navigationHistory: [],
+      showLauncher: false,
+      showError: false,
+      loadAttempts: 0,
+      connectionStatus: 'connecting',
+      // Side menu properties - explicitly defined for reactivity
+      iframeWidth: 800,
+      sideMenuWidth: 300,
+      isResizing: false,
+      startX: 0,
+      startWidth: 0
+    }
+  },
+  computed: {
+    iframeStyle() {
+      // Use flex-basis to size the left pane precisely
+      return {
+        flexBasis: this.iframeWidth + 'px'
+      }
+    },
+    sideMenuStyle() {
+      return {
+        width: this.sideMenuWidth + 'px'
+      }
+    }
+  },
+  mounted() {
+    console.log('MyCarl Integration App loaded successfully')
+    this.navigationHistory.push(this.currentUrl)
+    this.setupIframeListener()
+    
+    // Set initial iframe width based on container size
+    this.$nextTick(() => {
+      const container = this.$refs.mainLayout
+      if (container) {
+        const containerWidth = container.clientWidth || window.innerWidth
+        const handleWidth = 8
+        this.iframeWidth = Math.max(400, containerWidth - this.sideMenuWidth - handleWidth)
+      } else {
+        this.iframeWidth = Math.max(400, window.innerWidth - this.sideMenuWidth - 8)
+      }
+      // Recalculate on resize
+      window.addEventListener('resize', this.calculateMaxWidth)
+    })
+    
+    // Test proxy connection first
+    this.testProxyConnection()
+  },
+  methods: {
+    calculateMaxWidth() {
+      const container = this.$refs.mainLayout
+      const containerWidth = container ? container.clientWidth : window.innerWidth
+      const handleWidth = 8
+      const minWidth = 300
+      const maxWidth = containerWidth - this.sideMenuWidth - handleWidth
+      if (this.iframeWidth > maxWidth) {
+        this.iframeWidth = Math.max(minWidth, maxWidth)
+      }
+    },
+    setupIframeListener() {
+      // Listen for iframe navigation changes
+      const iframe = this.$refs.mycarlIframe
+      if (iframe) {
+        iframe.addEventListener('load', () => {
+          this.updateNavigationState()
+        })
+      }
+    },
+    
+    updateNavigationState() {
+      // Simple navigation state based on history
+      this.canGoBack = this.navigationHistory.length > 1
+      this.canGoForward = false // Simplified for now
+    },
+    
+    goBack() {
+      if (this.canGoBack && this.navigationHistory.length > 1) {
+        this.navigationHistory.pop() // Remove current
+        const previousUrl = this.navigationHistory[this.navigationHistory.length - 1]
+        this.currentUrl = previousUrl
+        this.navigateTo()
+      }
+    },
+    
+    goForward() {
+      // Simplified forward functionality
+      console.log('Forward navigation not implemented in iframe mode')
+    },
+    
+    reloadPage() {
+      const iframe = this.$refs.mycarlIframe
+      if (iframe) {
+        iframe.src = iframe.src
+      }
+    },
+    
+    navigateTo() {
+      const iframe = this.$refs.mycarlIframe
+      if (iframe && this.currentUrl) {
+        // Add to history if it's a new URL
+        if (this.navigationHistory[this.navigationHistory.length - 1] !== this.currentUrl) {
+          this.navigationHistory.push(this.currentUrl)
+        }
+        iframe.src = this.currentUrl
+        this.updateNavigationState()
+      }
+    },
+    
+    launchMyCarl() {
+      // Open MyCarl in a new tab/window
+      window.open('/mycarl/', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')
+    },
+    
+    openDashboardDirect() {
+      // Open dashboard directly in new tab
+      window.open('/mycarl/client/8565/dashboard', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')
+    },
+    
+    tryEmbedded() {
+      // Hide launcher and show iframe (will have limitations)
+      this.showLauncher = false
+      this.$nextTick(() => {
+        this.setupIframeListener()
+      })
+    },
+    
+    onIframeLoad() {
+      console.log('Iframe loaded successfully')
+      this.showError = false
+      this.loadAttempts = 0
+      this.connectionStatus = 'connected'
+      
+      // Try to access iframe content for debugging
+      try {
+        const iframe = this.$refs.mycarlIframe
+        if (iframe && iframe.contentWindow) {
+          console.log('Iframe content window accessible:', iframe.contentWindow.location.href)
+        }
+      } catch (error) {
+        console.log('Iframe content access error (expected for cross-origin):', error.message)
+      }
+      
+      // Dashboard should load directly now with authentication injection
+    },
+    
+    onIframeError(event) {
+      console.error('Iframe failed to load:', this.currentUrl, event)
+      this.connectionStatus = 'error'
+      this.loadAttempts++
+      
+      // Log more details about the error
+      const iframe = this.$refs.mycarlIframe
+      if (iframe) {
+        console.log('Iframe src:', iframe.src)
+        console.log('Iframe readyState:', iframe.readyState)
+      }
+      
+      if (this.loadAttempts >= 3) {
+        this.showError = true
+      } else {
+        // Retry after a short delay
+        console.log(`Retrying connection (attempt ${this.loadAttempts + 1}/3)...`)
+        setTimeout(() => {
+          this.reloadPage()
+        }, 2000)
+      }
+    },
+    
+    retryConnection() {
+      this.showError = false
+      this.loadAttempts = 0
+      this.connectionStatus = 'connecting'
+      this.reloadPage()
+    },
+
+    // Side menu methods
+
+    startResize(event) {
+      // Use Pointer Events for robust capture across iframes
+      const e = event instanceof PointerEvent ? event : null
+      this.isResizing = true
+      this.startX = (e ? e.clientX : event.clientX)
+      this.startWidth = this.iframeWidth
+      
+      // Capture pointer so we keep getting events even if leaving the handle
+      try {
+        if (e && event.currentTarget && event.currentTarget.setPointerCapture) {
+          event.currentTarget.setPointerCapture(e.pointerId)
+        }
+      } catch (_) {}
+      
+      // Global listeners (pointer events preferred)
+      window.addEventListener('pointermove', this.handleResize)
+      window.addEventListener('pointerup', this.stopResize, { once: true })
+      window.addEventListener('mouseup', this.stopResize, { once: true })
+      window.addEventListener('blur', this.stopResize, { once: true })
+      document.body.style.cursor = 'col-resize'
+      event.preventDefault()
+    },
+
+    handleResize(event) {
+      if (!this.isResizing) return
+      const clientX = (event instanceof PointerEvent) ? event.clientX : event.clientX
+      const deltaX = clientX - this.startX
+      const newIframeWidth = this.startWidth + deltaX
+      
+      // Set minimum and maximum widths
+      const container = this.$refs.mainLayout
+      const containerWidth = container ? container.clientWidth : window.innerWidth
+      const handleWidth = 8
+      const minIframeWidth = 300
+      const minSideMenuWidth = 200
+      const maxIframeWidth = containerWidth - minSideMenuWidth - handleWidth
+      
+      // Update iframe width with constraints
+      this.iframeWidth = Math.max(minIframeWidth, Math.min(newIframeWidth, maxIframeWidth))
+      
+      // Calculate side menu width as remaining space
+      this.sideMenuWidth = containerWidth - this.iframeWidth - handleWidth
+    },
+
+    stopResize() {
+      this.isResizing = false
+      window.removeEventListener('pointermove', this.handleResize)
+      window.removeEventListener('pointerup', this.stopResize)
+      window.removeEventListener('mouseup', this.stopResize)
+      window.removeEventListener('blur', this.stopResize)
+      document.body.style.cursor = 'default'
+    },
+    
+    async testProxyConnection() {
+      try {
+        console.log('Testing proxy connection...')
+        const response = await fetch('/mycarl/', { 
+          method: 'HEAD'
+        })
+        console.log('Proxy connection test successful')
+        return true
+      } catch (error) {
+        console.error('Proxy connection test failed:', error)
+        return false
+      }
+    }
+  }
+}
+</script>
+
+<style scoped>
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+}
+
+.browser-bar {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  padding: 8px 12px;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.browser-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.control-btn {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: #495057;
+}
+
+.control-btn:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.address-bar {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.url-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 20px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.url-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin: 0 0.5rem;
+  font-size: 1rem;
+}
+
+.connection-status.connecting span {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.go-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.go-btn:hover {
+  background: #0056b3;
+}
+
+.browser-content {
+  flex: 1;
+  display: flex;
+  background: white;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+}
+
+/* Left pane is a fixed-basis flex item sized via inline style */
+.iframe-container {
+  position: relative;
+  height: 100%;
+  flex: 0 0 auto; /* prevent growing/shrinking, we control size via flex-basis */
+  display: flex;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.main-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.iframe-container {
+  position: relative;
+  height: 100%;
+  transition: none; /* instant while we drag; we control visuals via hover */
+  flex-shrink: 0;
+}
+
+.iframe-container.no-transition {
+  transition: none;
+}
+
+.mycarl-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: white;
+}
+
+.resize-handle {
+  width: 1px; /* subtle when idle */
+  height: 100%;
+  cursor: col-resize;
+  flex-shrink: 0;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.resize-handle .separator {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  width: 9px; /* 9px hit area (4px on each side of center line) */
+  height: 100%;
+  background: transparent;
+  transition: background-color 60ms linear;
+}
+
+.resize-handle:hover .separator,
+.resize-handle:active .separator {
+  background: rgba(0, 123, 255, 0.35); /* visible only on hover/drag */
+}
+
+.resize-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999; /* ensure it sits above the iframe to capture pointerup */
+  background: transparent;
+  cursor: col-resize;
+}
+
+.side-menu {
+  height: 100%;
+  background: #f8f9fa;
+  border-left: 1px solid #dee2e6;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Only apply transition when not resizing */
+.side-menu:not(.no-transition) {
+  transition: width 0.3s ease;
+}
+
+.side-menu-fill {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0; /* Allow flexbox to shrink */
+}
+
+.freddy-chat-embed {
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  display: flex !important;
+  min-height: 0 !important; /* Remove any minimum height constraints */
+  max-height: none !important; /* Remove any maximum height constraints */
+  overflow: hidden; /* Prevent content from overflowing */
+  padding: 0 !important; /* Remove all padding */
+  margin: 0 !important; /* Remove all margins */
+}
+
+/* Target all child elements of the chat interface to ensure full height */
+.freddy-chat-embed *,
+.freddy-chat-embed::before,
+.freddy-chat-embed::after {
+  box-sizing: border-box !important;
+}
+
+/* Ensure the root element of the chat interface fills the container */
+.freddy-chat-embed > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  flex: 1 1 auto !important;
+}
+
+/* Override hardcoded height constraints in the chat interface component */
+.freddy-chat-embed .chat-interface__messages {
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  flex: 1 !important;
+}
+
+
+
+.launcher-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.launcher-card {
+  background: white;
+  border-radius: 16px;
+  padding: 3rem;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e1e5e9;
+}
+
+.launcher-icon {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.launcher-card h2 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.launcher-card p {
+  color: #6c757d;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+.launcher-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+.launch-btn {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 160px;
+}
+
+.launch-btn.primary {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.launch-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
+}
+
+.launch-btn.secondary {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 2px solid #dee2e6;
+}
+
+.launch-btn.secondary:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.launcher-info {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #dee2e6;
+  text-align: left;
+}
+
+.launcher-info h3 {
+  color: #495057;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.launcher-info ul {
+  color: #6c757d;
+  line-height: 1.6;
+  padding-left: 1.5rem;
+}
+
+.launcher-info li {
+  margin-bottom: 0.5rem;
+}
+
+.error-message {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: white;
+  text-align: center;
+}
+
+.error-message h3 {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.error-message ul {
+  text-align: left;
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.error-message li {
+  margin-bottom: 0.5rem;
+}
+
+.error-details {
+  text-align: left;
+  max-width: 500px;
+  margin: 1.5rem 0;
+}
+
+.error-details h4 {
+  color: white;
+  margin: 1rem 0 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.error-details p {
+  margin-bottom: 1rem;
+  opacity: 0.9;
+}
+
+.error-details ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.error-details li {
+  margin-bottom: 0.8rem;
+  line-height: 1.4;
+}
+
+.quick-access-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+}
+
+.quick-access-card {
+  text-align: center;
+  max-width: 500px;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.quick-access-card h3 {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.quick-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  min-width: 160px;
+}
+
+.quick-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.quick-btn.primary {
+  background: rgba(255, 255, 255, 0.9);
+  color: #28a745;
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.quick-btn.primary:hover {
+  background: white;
+  transform: translateY(-2px);
+}
+
+.quick-note {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.error-actions {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.retry-btn, .error-message .launch-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 0.8rem 1.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover, .error-message .launch-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.error-note {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 1rem;
+}
+
+.error-note code {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .browser-bar {
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+  }
+  
+  .browser-controls {
+    align-self: flex-start;
+  }
+  
+  .address-bar {
+    width: 100%;
+  }
+}
+</style>
