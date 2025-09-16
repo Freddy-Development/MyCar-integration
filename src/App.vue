@@ -1,6 +1,7 @@
 <template>
   <div class="app-container">
-    <div class="browser-bar">
+    <!-- Browser bar hidden as requested -->
+    <!-- <div class="browser-bar">
       <div class="browser-controls">
         <button class="control-btn" @click="goBack" :disabled="!canGoBack" title="Back">←</button>
         <button class="control-btn" @click="goForward" :disabled="!canGoForward" title="Forward">→</button>
@@ -20,7 +21,7 @@
         </div>
         <button class="go-btn" @click="navigateTo">Go</button>
       </div>
-    </div>
+    </div> -->
     
     <div class="browser-content">
       <div v-if="showLauncher" class="launcher-screen">
@@ -120,7 +121,7 @@ export default {
   name: 'App',
   data() {
     return {
-             currentUrl: '/mycarl/client/8565/dashboard',
+             currentUrl: '/mycarl/client/8784/dashboard',
       canGoBack: false,
       canGoForward: false,
       navigationHistory: [],
