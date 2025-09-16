@@ -2,11 +2,11 @@ import { createApp } from "vue";
 import App from "./App.vue";
 
 // Import web components (auto-registers on import)
-import "/Users/philliploacker/Documents/GitHub/Aitronos.Freddy.Plugins/dist/web-components.js";
-import "/Users/philliploacker/Documents/GitHub/Aitronos.Freddy.Plugins/dist/freddy-plugins.css";
+import "@aitronos/freddy-plugins/web-components";
+import "@aitronos/freddy-plugins/freddy-plugins.css";
 
 // Import theme service to apply proper styling
-import { useThemeService } from "/Users/philliploacker/Documents/GitHub/Aitronos.Freddy.Plugins/dist/index.js";
+import { useThemeService } from "@aitronos/freddy-plugins";
 
 const app = createApp(App);
 app.mount("#app");

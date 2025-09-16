@@ -18,10 +18,9 @@ export default defineConfig({
     open: true,
     host: "localhost",
     fs: {
-      // Allow serving files from Freddy.Plugins repo for local dev
+      // Allow serving files from project directory
       allow: [
         "/Users/philliploacker/Documents/GitHub/MyCar integration",
-        "/Users/philliploacker/Documents/GitHub/Aitronos.Freddy.Plugins",
       ],
     },
     proxy: {
@@ -30,19 +29,26 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/mycarl/, ""),
       },
+      "/freddy-api": {
+        target: "https://freddy-api.aitronos.com",
+        changeOrigin: true,
+        secure: true,
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('Freddy API proxy error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('Proxying Freddy API request:', req.method, req.url);
+          });
+        },
+        rewrite: (path) => path.replace(/^\/freddy-api/, ""),
+      },
     },
   },
   root: ".",
   resolve: {
     alias: {
       "@": "/src",
-      // Map Freddy plugins to local dist output
-      "@aitronos/freddy-plugins":
-        "/Users/philliploacker/Documents/GitHub/Aitronos.Freddy.Plugins/dist/index.js",
-      "@aitronos/freddy-plugins/web-components":
-        "/Users/philliploacker/Documents/GitHub/Aitronos.Freddy.Plugins/dist/web-components.js",
-      "@aitronos/freddy-plugins/freddy-plugins.css":
-        "/Users/philliploacker/Documents/GitHub/Aitronos.Freddy.Plugins/dist/freddy-plugins.css",
     },
   },
 });

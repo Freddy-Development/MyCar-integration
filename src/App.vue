@@ -92,7 +92,8 @@
                      class="freddy-chat-embed"
                      placeholder="Start a new conversation..."
                      size="md"
-                     theme="light"
+                     theme="auto"
+                     api-key="sk-frdy-cc5d7e78-9d99-4a5b-a144-1a784d2a3ed2"
                      api-base-url="/freddy-api"
                      organization-id="52"
                      :file-search="false"
@@ -896,6 +897,68 @@ export default {
   border-radius: 4px;
   font-family: 'Courier New', monospace;
 }
+
+/* Freddy Chat Interface Styling Fix - COMMENTED OUT TO TEST NPM PACKAGE */
+/*
+.freddy-chat-embed {
+  --freddy-border-color: #d1d5db;
+  --freddy-input-border: 1px solid #d1d5db;
+  --freddy-input-border-focus: 1px solid #3b82f6;
+  --freddy-input-border-radius: 8px;
+}
+
+.freddy-chat-embed::part(chat-input),
+.freddy-chat-embed >>> .chat-input,
+.freddy-chat-embed /deep/ .chat-input {
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+}
+
+.freddy-chat-embed::part(chat-input):focus,
+.freddy-chat-embed >>> .chat-input:focus,
+.freddy-chat-embed /deep/ .chat-input:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.freddy-chat-embed input[type="text"],
+.freddy-chat-embed input[type="search"],
+.freddy-chat-embed textarea {
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+}
+
+.freddy-chat-embed input[type="text"]:focus,
+.freddy-chat-embed input[type="search"]:focus,
+.freddy-chat-embed textarea:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.freddy-chat-embed * {
+  --border-radius: 8px !important;
+  --input-border-radius: 8px !important;
+}
+
+.freddy-chat-embed input,
+.freddy-chat-embed textarea,
+.freddy-chat-embed [contenteditable],
+.freddy-chat-embed .input,
+.freddy-chat-embed .chat-input,
+.freddy-chat-embed .message-input {
+  border-radius: 8px !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.freddy-chat-embed input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]) {
+  border-radius: 8px !important;
+  border: 1px solid #d1d5db !important;
+  padding: 8px 12px !important;
+}
+*/
 
 /* Responsive design */
 @media (max-width: 768px) {
