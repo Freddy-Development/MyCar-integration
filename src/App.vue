@@ -90,7 +90,7 @@
                    <!-- Freddy Chat Interface embedded -->
                    <freddy-chat-interface
                      class="freddy-chat-embed"
-                     placeholder="Start a new conversation..."
+                     placeholder="Frage mich etwas über deine Buchhaltung..."
                      size="md"
                      theme="auto"
                      api-key="sk-frdy-cc5d7e78-9d99-4a5b-a144-1a784d2a3ed2"
@@ -959,6 +959,55 @@ export default {
   padding: 8px 12px !important;
 }
 */
+
+/* CARL Custom Styling - Replace Welcome State */
+
+/* Replace welcome title */
+.freddy-chat-embed .chat-interface__welcome-title {
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+.freddy-chat-embed .chat-interface__welcome-title::after {
+  content: 'Gespräch mit CARL beginnen' !important;
+  font-size: 1.5rem !important;
+  line-height: 1.2 !important;
+  font-weight: 600 !important;
+  display: block !important;
+}
+
+/* Replace welcome text */
+.freddy-chat-embed .chat-interface__welcome-text {
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+.freddy-chat-embed .chat-interface__welcome-text::after {
+  content: 'Grüezi, ich bin CARL, dein persönlicher Buchhaltungsassistent. Du kannst mich alles fragen: von offenen Rechnungen, über Kontenblättern bis hin zu einem Finanz-Forecast. Probiere es einfach mal aus.' !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  display: block !important;
+  color: var(--freddy-text-secondary, #6b7280) !important;
+}
+
+/* Custom CARL avatar - replace chat bubble with custom image */
+.freddy-chat-embed .chat-interface__welcome-icon {
+  font-size: 0 !important;
+  line-height: 0 !important;
+  margin-bottom: 1rem !important;
+}
+
+.freddy-chat-embed .chat-interface__welcome-icon::before {
+  content: '' !important;
+  display: inline-block !important;
+  width: 60px !important;
+  height: 60px !important;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiMwMDdCRkYiLz4KPHN2ZyB4PSIxNSIgeT0iMTUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+') !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  border-radius: 50% !important;
+}
 
 /* Responsive design */
 @media (max-width: 768px) {
