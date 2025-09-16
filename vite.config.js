@@ -18,10 +18,8 @@ export default defineConfig({
     open: true,
     host: "localhost",
     fs: {
-      // Allow serving files from project directory
-      allow: [
-        "/Users/philliploacker/Documents/GitHub/MyCar integration",
-      ],
+      // Allow serving files from anywhere (removes restrictions)
+      allow: [".."],
     },
     proxy: {
       "/mycarl": {
