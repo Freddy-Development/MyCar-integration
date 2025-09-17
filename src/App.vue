@@ -56,25 +56,18 @@
         </div>
       </div>
       
-      <!-- Main content area with iframe and side menu -->
+      <!-- Main content area with screenshot and side menu -->
       <div class="main-layout" v-else ref="mainLayout">
-        <div class="iframe-container" :class="{ 'no-transition': isResizing }" :style="iframeStyle" :data-width="iframeWidth">
-          <div v-if="connectionStatus === 'connecting'" class="loading-overlay">
-            <div class="loading-spinner"></div>
-            <p>Loading MyCarl...</p>
+        <div class="screenshot-container" :class="{ 'no-transition': isResizing }" :style="screenshotStyle" :data-width="screenshotWidth">
+          <div class="screenshot-wrapper" @click="openCarlApp">
+            <img 
+              src="/carl-screenshot.jpg" 
+              alt="Carl Dashboard Screenshot" 
+              class="carl-screenshot"
+              @load="onScreenshotLoad"
+              @error="onScreenshotError"
+            />
           </div>
-          <iframe
-            ref="mycarlIframe"
-            :src="currentUrl"
-            class="mycarl-iframe"
-            title="MyCarl Accounting Software"
-            frameborder="0"
-            allowfullscreen
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-top-navigation-by-user-activation allow-downloads allow-modals"
-            allow="camera; microphone; geolocation; payment; encrypted-media; autoplay; fullscreen; picture-in-picture; web-share"
-            @load="onIframeLoad"
-            @error="onIframeError"
-          ></iframe>
         </div>
 
         <!-- Draggable resize handle -->
@@ -100,6 +93,8 @@
                      :file-search="false"
                      :web-search="false"
                      :debug-mode="false"
+                     welcome-title="CARL: dein neuer Buchhaltungsassistent"
+                     welcome-text="Neu: Ab heute hilft dir CARL, dein persönlicher Buchhaltungsassistent, zu verstehen und bessere Entscheidungen zu treffen. Einfach fragen – klare Antworten in Echtzeit."
                    ></freddy-chat-interface>
           </div>
         </div>
@@ -130,7 +125,7 @@ export default {
       loadAttempts: 0,
       connectionStatus: 'connecting',
       // Side menu properties - explicitly defined for reactivity
-      iframeWidth: 800,
+      screenshotWidth: 800,
       sideMenuWidth: 300,
       isResizing: false,
       startX: 0,
@@ -138,10 +133,10 @@ export default {
     }
   },
   computed: {
-    iframeStyle() {
+    screenshotStyle() {
       // Use flex-basis to size the left pane precisely
       return {
-        flexBasis: this.iframeWidth + 'px'
+        flexBasis: this.screenshotWidth + 'px'
       }
     },
     sideMenuStyle() {
@@ -153,24 +148,23 @@ export default {
   mounted() {
     console.log('MyCarl Integration App loaded successfully')
     this.navigationHistory.push(this.currentUrl)
-    this.setupIframeListener()
     
-    // Set initial iframe width based on container size
+    // Set initial screenshot width based on container size
     this.$nextTick(() => {
       const container = this.$refs.mainLayout
       if (container) {
         const containerWidth = container.clientWidth || window.innerWidth
         const handleWidth = 8
-        this.iframeWidth = Math.max(400, containerWidth - this.sideMenuWidth - handleWidth)
+        this.screenshotWidth = Math.max(400, containerWidth - this.sideMenuWidth - handleWidth)
       } else {
-        this.iframeWidth = Math.max(400, window.innerWidth - this.sideMenuWidth - 8)
+        this.screenshotWidth = Math.max(400, window.innerWidth - this.sideMenuWidth - 8)
       }
       // Recalculate on resize
       window.addEventListener('resize', this.calculateMaxWidth)
     })
     
-    // Test proxy connection first
-    this.testProxyConnection()
+    // Customize Freddy chat welcome message
+    this.customizeFreddyChat()
   },
   methods: {
     calculateMaxWidth() {
@@ -179,18 +173,50 @@ export default {
       const handleWidth = 8
       const minWidth = 300
       const maxWidth = containerWidth - this.sideMenuWidth - handleWidth
-      if (this.iframeWidth > maxWidth) {
-        this.iframeWidth = Math.max(minWidth, maxWidth)
+      if (this.screenshotWidth > maxWidth) {
+        this.screenshotWidth = Math.max(minWidth, maxWidth)
       }
     },
-    setupIframeListener() {
-      // Listen for iframe navigation changes
-      const iframe = this.$refs.mycarlIframe
-      if (iframe) {
-        iframe.addEventListener('load', () => {
-          this.updateNavigationState()
-        })
-      }
+    openCarlApp() {
+      // Open Carl in a new tab/window
+      window.open('/mycarl/client/8565/dashboard', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')
+    },
+    
+    customizeFreddyChat() {
+      // Wait for the Freddy chat component to be fully loaded
+      setTimeout(() => {
+        const chatInterface = document.querySelector('.freddy-chat-embed')
+        if (chatInterface) {
+          // Find and replace the welcome title
+          const welcomeTitle = chatInterface.querySelector('.chat-interface__welcome-title')
+          if (welcomeTitle) {
+            welcomeTitle.textContent = 'CARL: dein neuer Buchhaltungsassistent'
+          }
+          
+          // Find and replace the welcome text
+          const welcomeText = chatInterface.querySelector('.chat-interface__welcome-text')
+          if (welcomeText) {
+            welcomeText.textContent = 'Neu: Ab heute hilft dir CARL, dein persönlicher Buchhaltungsassistent, zu verstehen und bessere Entscheidungen zu treffen. Einfach fragen – klare Antworten in Echtzeit.'
+          }
+          
+          // Also try to find by text content as fallback
+          const allElements = chatInterface.querySelectorAll('*')
+          allElements.forEach(element => {
+            if (element.textContent === 'Start a conversation') {
+              element.textContent = 'CARL: dein neuer Buchhaltungsassistent'
+            }
+            if (element.textContent === 'Type a message below to begin chatting with your AI assistant.') {
+              element.textContent = 'Neu: Ab heute hilft dir CARL, dein persönlicher Buchhaltungsassistent, zu verstehen und bessere Entscheidungen zu treffen. Einfach fragen – klare Antworten in Echtzeit.'
+            }
+          })
+          
+          console.log('✅ Freddy chat welcome message customized')
+        } else {
+          console.log('❌ Freddy chat interface not found, retrying...')
+          // Retry after another delay
+          setTimeout(() => this.customizeFreddyChat(), 1000)
+        }
+      }, 2000)
     },
     
     updateNavigationState() {
@@ -213,22 +239,20 @@ export default {
       console.log('Forward navigation not implemented in iframe mode')
     },
     
-    reloadPage() {
-      const iframe = this.$refs.mycarlIframe
-      if (iframe) {
-        iframe.src = iframe.src
-      }
+    onScreenshotLoad() {
+      console.log('Screenshot loaded successfully')
+      this.connectionStatus = 'connected'
+    },
+    
+    onScreenshotError(event) {
+      console.error('Screenshot failed to load:', event)
+      this.connectionStatus = 'error'
     },
     
     navigateTo() {
-      const iframe = this.$refs.mycarlIframe
-      if (iframe && this.currentUrl) {
-        // Add to history if it's a new URL
-        if (this.navigationHistory[this.navigationHistory.length - 1] !== this.currentUrl) {
-          this.navigationHistory.push(this.currentUrl)
-        }
-        iframe.src = this.currentUrl
-        this.updateNavigationState()
+      // For screenshot mode, just open the URL in a new tab
+      if (this.currentUrl) {
+        window.open(this.currentUrl, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')
       }
     },
     
@@ -243,70 +267,18 @@ export default {
     },
     
     tryEmbedded() {
-      // Hide launcher and show iframe (will have limitations)
+      // Hide launcher and show screenshot
       this.showLauncher = false
-      this.$nextTick(() => {
-        this.setupIframeListener()
-      })
-    },
-    
-    onIframeLoad() {
-      console.log('Iframe loaded successfully')
-      this.showError = false
-      this.loadAttempts = 0
-      this.connectionStatus = 'connected'
-      
-      // Try to access iframe content for debugging
-      try {
-        const iframe = this.$refs.mycarlIframe
-        if (iframe && iframe.contentWindow) {
-          console.log('Iframe content window accessible:', iframe.contentWindow.location.href)
-        }
-      } catch (error) {
-        console.log('Iframe content access error (expected for cross-origin):', error.message)
-      }
-      
-      // Dashboard should load directly now with authentication injection
-    },
-    
-    onIframeError(event) {
-      console.error('Iframe failed to load:', this.currentUrl, event)
-      this.connectionStatus = 'error'
-      this.loadAttempts++
-      
-      // Log more details about the error
-      const iframe = this.$refs.mycarlIframe
-      if (iframe) {
-        console.log('Iframe src:', iframe.src)
-        console.log('Iframe readyState:', iframe.readyState)
-      }
-      
-      if (this.loadAttempts >= 3) {
-        this.showError = true
-      } else {
-        // Retry after a short delay
-        console.log(`Retrying connection (attempt ${this.loadAttempts + 1}/3)...`)
-        setTimeout(() => {
-          this.reloadPage()
-        }, 2000)
-      }
-    },
-    
-    retryConnection() {
-      this.showError = false
-      this.loadAttempts = 0
-      this.connectionStatus = 'connecting'
-      this.reloadPage()
     },
 
     // Side menu methods
 
     startResize(event) {
-      // Use Pointer Events for robust capture across iframes
+      // Use Pointer Events for robust capture
       const e = event instanceof PointerEvent ? event : null
       this.isResizing = true
       this.startX = (e ? e.clientX : event.clientX)
-      this.startWidth = this.iframeWidth
+      this.startWidth = this.screenshotWidth
       
       // Capture pointer so we keep getting events even if leaving the handle
       try {
@@ -328,21 +300,21 @@ export default {
       if (!this.isResizing) return
       const clientX = (event instanceof PointerEvent) ? event.clientX : event.clientX
       const deltaX = clientX - this.startX
-      const newIframeWidth = this.startWidth + deltaX
+      const newScreenshotWidth = this.startWidth + deltaX
       
       // Set minimum and maximum widths
       const container = this.$refs.mainLayout
       const containerWidth = container ? container.clientWidth : window.innerWidth
       const handleWidth = 8
-      const minIframeWidth = 300
+      const minScreenshotWidth = 300
       const minSideMenuWidth = 200
-      const maxIframeWidth = containerWidth - minSideMenuWidth - handleWidth
+      const maxScreenshotWidth = containerWidth - minSideMenuWidth - handleWidth
       
-      // Update iframe width with constraints
-      this.iframeWidth = Math.max(minIframeWidth, Math.min(newIframeWidth, maxIframeWidth))
+      // Update screenshot width with constraints
+      this.screenshotWidth = Math.max(minScreenshotWidth, Math.min(newScreenshotWidth, maxScreenshotWidth))
       
       // Calculate side menu width as remaining space
-      this.sideMenuWidth = containerWidth - this.iframeWidth - handleWidth
+      this.sideMenuWidth = containerWidth - this.screenshotWidth - handleWidth
     },
 
     stopResize() {
@@ -354,19 +326,6 @@ export default {
       document.body.style.cursor = 'default'
     },
     
-    async testProxyConnection() {
-      try {
-        console.log('Testing proxy connection...')
-        const response = await fetch('/mycarl/', { 
-          method: 'HEAD'
-        })
-        console.log('Proxy connection test successful')
-        return true
-      } catch (error) {
-        console.error('Proxy connection test failed:', error)
-        return false
-      }
-    }
   }
 }
 </script>
@@ -489,7 +448,7 @@ export default {
 }
 
 /* Left pane is a fixed-basis flex item sized via inline style */
-.iframe-container {
+.screenshot-container {
   position: relative;
   height: 100%;
   flex: 0 0 auto; /* prevent growing/shrinking, we control size via flex-basis */
@@ -526,21 +485,29 @@ export default {
   height: 100%;
 }
 
-.iframe-container {
+.screenshot-container {
   position: relative;
   height: 100%;
   transition: none; /* instant while we drag; we control visuals via hover */
   flex-shrink: 0;
 }
 
-.iframe-container.no-transition {
+.screenshot-container.no-transition {
   transition: none;
 }
 
-.mycarl-iframe {
+.screenshot-wrapper {
+  position: relative;
   width: 100%;
   height: 100%;
-  border: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.carl-screenshot {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
   background: white;
 }
@@ -963,32 +930,46 @@ export default {
 
 /* CARL Custom Styling - Replace Welcome State */
 
-/* Replace welcome title */
-.freddy-chat-embed .chat-interface__welcome-title {
-  font-size: 0 !important;
-  line-height: 0 !important;
+/* More aggressive approach - target all possible selectors */
+.freddy-chat-embed * {
+  position: relative;
 }
 
-.freddy-chat-embed .chat-interface__welcome-title::after {
-  content: 'Gespräch mit CARL beginnen' !important;
+/* Hide original welcome content */
+.freddy-chat-embed .chat-interface__welcome-title,
+.freddy-chat-embed h3,
+.freddy-chat-embed .welcome-title,
+.freddy-chat-embed .chat-interface__welcome-text,
+.freddy-chat-embed p,
+.freddy-chat-embed .welcome-text {
+  font-size: 0 !important;
+  line-height: 0 !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Add custom content using ::before and ::after */
+.freddy-chat-embed .chat-interface__welcome::before {
+  content: 'CARL: dein neuer Buchhaltungsassistent' !important;
+  display: block !important;
   font-size: 1.5rem !important;
   line-height: 1.2 !important;
   font-weight: 600 !important;
+  color: #374151 !important;
+  margin-bottom: 8px !important;
+  text-align: center !important;
+}
+
+.freddy-chat-embed .chat-interface__welcome::after {
+  content: 'Neu: Ab heute hilft dir CARL, dein persönlicher Buchhaltungsassistent, zu verstehen und bessere Entscheidungen zu treffen. Einfach fragen – klare Antworten in Echtzeit.' !important;
   display: block !important;
-}
-
-/* Replace welcome text */
-.freddy-chat-embed .chat-interface__welcome-text {
-  font-size: 0 !important;
-  line-height: 0 !important;
-}
-
-.freddy-chat-embed .chat-interface__welcome-text::after {
-  content: 'Grüezi, ich bin CARL, dein persönlicher Buchhaltungsassistent. Du kannst mich alles fragen: von offenen Rechnungen, über Kontenblättern bis hin zu einem Finanz-Forecast. Probiere es einfach mal aus.' !important;
   font-size: 1rem !important;
   line-height: 1.5 !important;
-  display: block !important;
-  color: var(--freddy-text-secondary, #6b7280) !important;
+  color: #6b7280 !important;
+  text-align: center !important;
+  margin-top: 8px !important;
 }
 
 /* Custom CARL avatar - replace chat bubble with custom image */
