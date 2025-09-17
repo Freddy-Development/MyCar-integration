@@ -61,7 +61,7 @@
         <div class="screenshot-container" :class="{ 'no-transition': isResizing }" :style="screenshotStyle" :data-width="screenshotWidth">
           <div class="screenshot-wrapper" @click="openCarlApp">
             <img 
-              src="/carl-screenshot.jpg" 
+              src="/carl-screenshot.png" 
               alt="Carl Dashboard Screenshot" 
               class="carl-screenshot"
               @load="onScreenshotLoad"
@@ -93,8 +93,8 @@
                      :file-search="false"
                      :web-search="false"
                      :debug-mode="false"
-                     welcome-title="CARL: dein neuer Buchhaltungsassistent"
-                     welcome-text="Neu: Ab heute hilft dir CARL, dein persönlicher Buchhaltungsassistent, zu verstehen und bessere Entscheidungen zu treffen. Einfach fragen – klare Antworten in Echtzeit."
+                     welcomeTitle="CARL: dein neuer Buchhaltungsassistent"
+                     welcomeText="Neu: Ab heute hilft dir CARL, dein persönlicher Buchhaltungsassistent, zu verstehen und bessere Entscheidungen zu treffen. Einfach fragen – klare Antworten in Echtzeit."
                    ></freddy-chat-interface>
           </div>
         </div>
