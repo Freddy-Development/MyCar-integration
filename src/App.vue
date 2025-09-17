@@ -90,7 +90,7 @@
                      api-key="sk-frdy-cc5d7e78-9d99-4a5b-a144-1a784d2a3ed2"
                      api-base-url="/freddy-api"
                      organization-id="52"
-                     :file-search="false"
+                     :file-search="true"
                      :web-search="false"
                      :debug-mode="false"
                      welcomeTitle="CARL: dein neuer Buchhaltungsassistent"
